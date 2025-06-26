@@ -69,3 +69,4 @@ if 'price' in df.columns:
 
     print("\nVariables les moins influentes sur le prix :")
     print(least_influential)
+
