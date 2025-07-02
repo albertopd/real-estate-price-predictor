@@ -69,14 +69,8 @@ df = df.dropna(subset=['price'])
 
 # 7. Apply preprocessing pipeline
 
-# Pipeline for numeric features: imputation → scaling
-numeric_pipeline = Pipeline([
-    ("imputer", SimpleImputer(strategy="median")),
-    ("scaler", StandardScaler())
-])
-
 preprocessor = ColumnTransformer([
-    ("num", numeric_pipeline, numeric_cols),
+    ("num", SimpleImputer(strategy="median"), numeric_cols),
     ("cat", OneHotEncoder(handle_unknown="ignore", sparse_output=False), categorical_cols)
 ], remainder="passthrough")
 
