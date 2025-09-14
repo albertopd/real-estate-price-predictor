@@ -3,7 +3,6 @@ pandas
 pyarrow
 fastparquet
 scikit-learn
-mlflow
 pyyaml
 html5lib 
 bs4

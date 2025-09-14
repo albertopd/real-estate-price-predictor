@@ -108,7 +108,7 @@ class RegressionTrainer:
         return model_path
 
     def train_and_evaluate_model(self, train_data_path: Path, models_dir: Path) -> Path:
-        """Complete training pipeline with MLFlow logging."""
+        """Complete training pipeline."""
         try:
             # Load and prepare data
             X, y = self.load_and_validate_data(train_data_path)

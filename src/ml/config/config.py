@@ -7,17 +7,6 @@ from typing import Optional
 
 
 @dataclass
-class MLFlowConfig:
-    """MLFlow configuration."""
-
-    sale_price_prediction_experiment_name: str = (
-        "real_estate_sale_price_prediction_training"
-    )
-    sale_price_prediction_model_name: str = "RealEstateSalePricePredictionModel"
-    tracking_uri: str = os.getenv("MLFLOW_TRACKING_URI", "http://mlflow:5000")
-
-
-@dataclass
 class ModelConfig:
     """Model hyperparameters and configuration."""
     test_size: float = 0.2

@@ -8,7 +8,7 @@ from typing import Any
 from airflow import DAG
 from airflow.decorators import task
 from airflow.models import Variable
-from ml.config.config import MLFlowConfig, ModelConfig
+from ml.config.config import ModelConfig
 from ml.training.regression_trainer import RegressionTrainer
 from ml.pipelines.analysis_preprocess import prepare_analysis_dataset
 from ml.pipelines.training_preprocess import prepare_training_dataset
