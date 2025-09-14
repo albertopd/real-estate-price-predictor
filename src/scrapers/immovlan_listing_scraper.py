@@ -112,7 +112,7 @@ class ImmovlanListingScraper:
         self,
         urls_txt_file_path: Path,
         output_file_path: Path,
-        max_listings: int,
+        max_listings: int | None = None,
         start_from_url: str = "",
     ) -> int:
         """

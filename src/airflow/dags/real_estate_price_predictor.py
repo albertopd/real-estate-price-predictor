@@ -96,9 +96,7 @@ with DAG(
             output_file_path.parent.mkdir(parents=True, exist_ok=True)
 
             scraper = ImmovlanListingScraper()
-            total_scraped = scraper.scrape_listings(
-                urls_txt_file, output_file_path, max_listings=10
-            )
+            total_scraped = scraper.scrape_listings(urls_txt_file, output_file_path)
 
             logger.info(
                 f"Scraped {total_scraped} apartments, saved to {output_file_path}"
@@ -126,9 +124,7 @@ with DAG(
             output_file_path.parent.mkdir(parents=True, exist_ok=True)
 
             scraper = ImmovlanListingScraper()
-            total_scraped = scraper.scrape_listings(
-                urls_txt_file, output_file_path, max_listings=10
-            )
+            total_scraped = scraper.scrape_listings(urls_txt_file, output_file_path)
 
             logger.info(f"Scraped {total_scraped} houses, saved to {output_file_path}")
             return str(output_file_path)
