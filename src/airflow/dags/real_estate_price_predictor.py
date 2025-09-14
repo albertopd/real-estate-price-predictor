@@ -1,6 +1,5 @@
 import os
 import sys
-import mlflow
 import pandas as pd
 from datetime import datetime, timedelta
 from datetime import timezone
@@ -32,7 +31,11 @@ MODELS_DIR = REPO_ROOT / "ml_models"
 
 
 # DAG default arguments
-default_args = {"owner": "data-eng", "depends_on_past": False}
+default_args = {
+    "owner": "data-eng", 
+    "depends_on_past": False
+}
+#TODO: enable email alerts and retries
 #    "retries": 1,
 #    "retry_delay": timedelta(minutes=5),
 #    "email_on_failure": True,
@@ -143,22 +146,18 @@ with DAG(
         try:
             # Verify input files exist
             if not Path(apartment_data_path).exists():
-                raise FileNotFoundError(
-                    f"Apartment data not found: {apartment_data_path}"
-                )
+                raise FileNotFoundError(f"Apartment data not found: {apartment_data_path}")
             if not Path(house_data_path).exists():
                 raise FileNotFoundError(f"House data not found: {house_data_path}")
 
-            out_file = prepare_analysis_dataset(apartment_data_path, house_data_path, ANALYSIS_DIR)
+            out_file = prepare_analysis_dataset(Path(apartment_data_path), Path(house_data_path), ANALYSIS_DIR)
 
             if not out_file.exists():
                 raise RuntimeError("Analysis dataset creation failed")
 
             # Log basic statistics
             df = pd.read_parquet(out_file)
-            logger.info(
-                f"Analysis dataset created with {len(df)} records, saved to {out_file}"
-            )
+            logger.info(f"Analysis dataset created with {len(df)} records, saved to {out_file}")
 
             return str(out_file)
 
@@ -167,20 +166,20 @@ with DAG(
             raise
 
     @task
-    def prep_training_dataset(apartment_path: Any, house_path: Any) -> str:
+    def prep_training_dataset(apartment_data_path: Any, house_data_path: Any) -> str:
         """Prepare training and test datasets from raw scraped data."""
         logger = setup_logger(__name__)
         logger.info("Preparing training datasets...")
 
         try:
             # Verify input files exist
-            if not Path(apartment_path).exists():
-                raise FileNotFoundError(f"Apartment data not found: {apartment_path}")
-            if not Path(house_path).exists():
-                raise FileNotFoundError(f"House data not found: {house_path}")
+            if not Path(apartment_data_path).exists():
+                raise FileNotFoundError(f"Apartment data not found: {apartment_data_path}")
+            if not Path(house_data_path).exists():
+                raise FileNotFoundError(f"House data not found: {house_data_path}")
 
             TRAINING_DIR.mkdir(parents=True, exist_ok=True)
-            training_dataset_path = prepare_training_dataset(RAW_DIR, TRAINING_DIR)
+            training_dataset_path = prepare_training_dataset(Path(apartment_data_path), Path(house_data_path), TRAINING_DIR)
 
             if not training_dataset_path.exists():
                 raise RuntimeError("Training dataset creation failed")
@@ -220,9 +219,8 @@ with DAG(
             model_config = ModelConfig(
                 alpha=alpha, l1_ratio=l1_ratio, test_size=test_size
             )
-            mlflow_config = MLFlowConfig()
 
-            trainer = RegressionTrainer(model_config, mlflow_config)
+            trainer = RegressionTrainer(model_config)
             model_path = trainer.train_and_evaluate_model(
                 Path(training_dataset_path), MODELS_DIR
             )
@@ -232,47 +230,6 @@ with DAG(
 
         except Exception as e:
             logger.error(f"Model training failed: {str(e)}")
-            raise
-
-    @task
-    def model_validation_gate(model_uri: Any) -> bool:
-        """Validation gate to check if model performance is acceptable."""
-        logger = setup_logger(__name__)
-
-        try:
-            #metrics = mlflow.get_metrics(model_uri)
-
-            # Define performance thresholds (can be moved to Airflow Variables)
-            min_r2 = float(Variable.get("model_min_r2", default_var=0.7))
-            max_mae = float(Variable.get("model_max_mae", default_var=50000))
-
-            r2_score = 0.8  # Placeholder value
-            mae_score = 40000  # Placeholder value
-
-            # Check performance criteria
-            r2_pass = r2_score >= min_r2
-            mae_pass = mae_score <= max_mae
-
-            if r2_pass and mae_pass:
-                logger.info(f"✅ Model validation PASSED!")
-                logger.info(f"R² = {r2_score:.3f} (>= {min_r2})")
-                logger.info(f"MAE = {mae_score:.2f} (<= {max_mae})")
-                return True
-            else:
-                logger.warning(f"❌ Model validation FAILED!")
-                logger.warning(
-                    f"R² = {r2_score:.3f} (required >= {min_r2}) - {'PASS' if r2_pass else 'FAIL'}"
-                )
-                logger.warning(
-                    f"MAE = {mae_score:.2f} (required <= {max_mae}) - {'PASS' if mae_pass else 'FAIL'}"
-                )
-
-                # Just warn for now, we could also fail the task with:
-                # raise ValueError("Model performance below acceptable thresholds")
-                return False
-
-        except Exception as e:
-            logger.error(f"Model validation failed: {str(e)}")
             raise
 
     @task
@@ -312,7 +269,6 @@ with DAG(
     t_prep_analysis_dataset = prep_analysis_dataset(t_scrape_apartments, t_scrape_houses)
     t_prep_training_dataset = prep_training_dataset(t_scrape_apartments, t_scrape_houses)
     t_train_model = train_model(t_prep_training_dataset)
-    t_model_validation = model_validation_gate(t_train_model)
     t_cleanup = cleanup_old_models()
 
     # Define task dependencies
@@ -321,9 +277,4 @@ with DAG(
     t_scrape_sitemaps >> [t_scrape_apartments, t_scrape_houses] >> t_prep_training_dataset
 
     # ML pipeline: training -> evaluation -> validation -> cleanup
-    (
-        t_prep_training_dataset
-        >> t_train_model
-        >> t_model_validation
-        >> t_cleanup
-    )
+    t_prep_training_dataset >> t_train_model >> t_cleanup

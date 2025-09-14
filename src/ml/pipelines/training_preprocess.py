@@ -6,6 +6,7 @@ from sklearn.impute import SimpleImputer
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.pipeline import Pipeline
+from ml.pipelines.utils import combine_datasets
 from utils.logging_utils import setup_logger
 
 
@@ -15,48 +16,7 @@ PREPROCESSOR_FILE = "preprocessor.joblib"
 logger = setup_logger(__name__)
 
 
-def _assemble_dataframe(raw_dir: Path) -> pd.DataFrame:
-    """
-    Assemble dataframe by loading the latest parquet file from apartments and houses folders.
-
-    Args:
-        raw_dir: Directory containing 'apartments' and 'houses' subdirectories
-
-    Returns:
-        Combined dataframe from the latest files in each category
-    """
-    frames = []
-
-    # Process apartments - get latest file
-    apartments_dir = raw_dir / "apartments"
-    if apartments_dir.exists():
-        apt_files = list(apartments_dir.glob("*.parquet"))
-        if apt_files:
-            # Sort by modification time and get the latest
-            latest_apt = max(apt_files, key=lambda p: p.stat().st_mtime)
-            frames.append(pd.read_parquet(latest_apt))
-            logger.info(f"Loaded latest apartments file: {latest_apt.name}")
-
-    # Process houses - get latest file
-    houses_dir = raw_dir / "houses"
-    if houses_dir.exists():
-        house_files = list(houses_dir.glob("*.parquet"))
-        if house_files:
-            # Sort by modification time and get the latest
-            latest_house = max(house_files, key=lambda p: p.stat().st_mtime)
-            frames.append(pd.read_parquet(latest_house))
-            logger.info(f"Loaded latest houses file: {latest_house.name}")
-
-    if not frames:
-        raise RuntimeError("No parquet files found in apartments or houses directories")
-
-    combined_df = pd.concat(frames, ignore_index=True)
-    logger.info(f"Combined dataset shape: {combined_df.shape}")
-
-    return combined_df
-
-
-def prepare_training_dataset(raw_dir: Path, out_dir: Path) -> Path:
+def prepare_training_dataset(apartment_data_path: Path, house_data_path: Path, out_dir: Path) -> Path:
     """
     Prepare and preprocess the training dataset for later use by a trainer.
 
@@ -64,15 +24,16 @@ def prepare_training_dataset(raw_dir: Path, out_dir: Path) -> Path:
         raw_dir: Directory containing raw data files
         out_dir: Directory to save the processed dataset
     """
-    df = _assemble_dataframe(raw_dir)
+    df = combine_datasets(apartment_data_path, house_data_path)
+
+    # Drop irrelevant columsns
+    df.drop(columns=["URL"], inplace=True)
 
     # Drop rows with missing critical fields
-    df = df.dropna(subset=["Price", "Living area", "Postal Code"])
+    df.dropna(subset=["Price", "Living area", "Postal Code"], inplace=True)
 
     if df.empty:
-        raise ValueError(
-            "No valid data remaining after dropping rows with missing critical fields"
-        )
+        raise ValueError("No valid data remaining after dropping rows with missing critical fields")
 
     # Define features and target
     y = df["Price"]

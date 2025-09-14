@@ -1,19 +1,14 @@
 import pandas as pd
 from pathlib import Path
+from ml.pipelines.utils import combine_datasets
 
 
-def prepare_analysis_dataset(
-    apartment_data_path: Path, house_data_path: Path, out_dir: Path
-) -> Path:
+def prepare_analysis_dataset(apartment_data_path: Path, house_data_path: Path, out_dir: Path) -> Path:
     """Build analysis dataset from raw apartment and house data."""
-    frames = []
-    frames.append(pd.read_parquet(apartment_data_path))
-    frames.append(pd.read_parquet(house_data_path))
+    df = combine_datasets(apartment_data_path, house_data_path)
 
-    if not frames:
-        raise RuntimeError("No raw data found to build analysis dataset")
-
-    df = pd.concat(frames, ignore_index=True)
+    # Drop irrelevant columsns
+    df.drop(columns=["URL"], inplace=True)
 
     # Analysis-focused cleaning: keep human-friendly fields, derive a few KPIs
     df["price_per_m2"] = df["Price"] / df["Living area"].replace(0, pd.NA)
