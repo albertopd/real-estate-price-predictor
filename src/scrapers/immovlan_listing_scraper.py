@@ -194,13 +194,15 @@ class ImmovlanListingScraper:
 
         df = pd.DataFrame(records, columns=fieldnames)
 
-        # If file doesn’t exist yet, write a new parquet file
-        if not file_path.exists() or file_path.stat().st_size == 0:
-            df.to_parquet(file_path, engine="pyarrow", index=False)
-        else:
-            # Append to existing parquet file
-            df.to_parquet(file_path, engine="pyarrow", index=False, append=True)
+        if file_path.exists() and file_path.stat().st_size > 0:
+            # Read existing parquet
+            existing_df = pd.read_parquet(file_path, engine="pyarrow")
+            # Concatenate new records
+            df = pd.concat([existing_df, df], ignore_index=True)
 
+        # Write full dataframe back to parquet
+        df.to_parquet(file_path, engine="pyarrow", index=False)
+        
     def _get_headers(self) -> dict:
         """
         Generate randomized, realistic HTTP headers to reduce request blocking.
