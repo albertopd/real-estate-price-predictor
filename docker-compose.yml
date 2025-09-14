@@ -12,7 +12,8 @@ services:
       POSTGRES_DB: airflow
     volumes:
       - airflow_db_data:/var/lib/postgresql/data
-    networks: [real_estate_predictor]
+    networks: 
+      - real_estate_predictor
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U airflow -q"]
       interval: 10s
@@ -22,7 +23,8 @@ services:
   # Redis broker for Airflow Celery executor task distribution
   airflow-redis:
     image: redis:7
-    networks: [real_estate_predictor]
+    networks: 
+      - real_estate_predictor
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -42,7 +44,9 @@ services:
     volumes:
       - minio_data:/data/minio
     command: 'minio server /data/minio --console-address ":8900"'
-    networks: [real_estate_predictor]
+    networks: 
+      - real_estate_predictor
+
 
   # =============================================================================
   # AIRFLOW SERVICES
@@ -54,13 +58,16 @@ services:
       context: .
       dockerfile: src/airflow/Dockerfile
     container_name: airflow-init
-    depends_on: [airflow-postgres, airflow-redis]
+    depends_on: 
+      - airflow-postgres
+      - airflow-redis
     environment:
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres:5432/airflow
     entrypoint: /bin/bash
     command: -c "airflow db init && airflow users create --username admin --password admin --firstname a --lastname b --role Admin --email a@b.com"
-    networks: [real_estate_predictor]
+    networks: 
+      - real_estate_predictor
 
   # Airflow web UI for DAG management and monitoring
   airflow-webserver:
@@ -68,7 +75,10 @@ services:
       context: .
       dockerfile: src/airflow/Dockerfile
     container_name: airflow-webserver
-    depends_on: [airflow-postgres, airflow-redis, airflow-init]
+    depends_on: 
+      - airflow-postgres
+      - airflow-redis
+      - airflow-init
     environment:
       PROJECT_ROOT: /opt/project
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
@@ -76,8 +86,10 @@ services:
       AIRFLOW__CELERY__BROKER_URL: redis://airflow-redis:6379/0
       AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@airflow-postgres:5432/airflow
     command: webserver
-    ports: ["8089:8080"]
-    networks: [real_estate_predictor]
+    ports: 
+      - "8089:8080"
+    networks:
+      - real_estate_predictor
     healthcheck:
       test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8080/health"]
       interval: 30s
@@ -90,7 +102,10 @@ services:
       context: .
       dockerfile: src/airflow/Dockerfile
     container_name: airflow-scheduler
-    depends_on: [airflow-postgres, airflow-redis, airflow-webserver]
+    depends_on: 
+      - airflow-postgres
+      - airflow-redis
+      - airflow-webserver
     environment:
       PROJECT_ROOT: /opt/project
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
@@ -103,14 +118,44 @@ services:
     volumes:
       - ./data:/opt/project/data
       - ./ml_models:/opt/project/ml_models
-    networks: [real_estate_predictor]
+    networks: 
+      - real_estate_predictor
     healthcheck:
       test: ["CMD", "pgrep", "-f", "airflow scheduler"]
       interval: 30s
       timeout: 10s
       retries: 5
 
-  #TODO: Add airflow-worker service for distributed task execution with Celery
+  # Airflow Celery worker
+  airflow-worker:
+    build:
+      context: .
+      dockerfile: src/airflow/Dockerfile
+    depends_on: 
+      - airflow-postgres
+      - airflow-redis
+    environment:
+      PROJECT_ROOT: /opt/project
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres:5432/airflow
+      AIRFLOW__CELERY__BROKER_URL: redis://airflow-redis:6379/0
+      AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@airflow-postgres:5432/airflow
+      AWS_ACCESS_KEY_ID: "minio"
+      AWS_SECRET_ACCESS_KEY: "minio123"
+    command: celery worker
+    deploy:
+      replicas: 2
+    volumes:
+      - ./data:/opt/project/data
+      - ./ml_models:/opt/project/ml_models
+    networks:
+      - real_estate_predictor
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "airflow celery worker"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
 
   # =============================================================================
   # APPLICATION SERVICES
@@ -126,7 +171,8 @@ services:
       - ./data:/app/data
     ports:
       - "8501:8501"
-    networks: [real_estate_predictor]
+    networks:
+      - real_estate_predictor
 
   # FastAPI service for real estate price predictions
   predictor-api:
@@ -141,7 +187,8 @@ services:
       - ./ml_models:/app/ml_models
     ports:
       - "8000:8000"
-    networks: [real_estate_predictor]
+    networks:
+      - real_estate_predictor
     healthcheck:
       test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8000/health"]
       interval: 30s

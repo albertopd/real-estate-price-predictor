@@ -28,6 +28,7 @@ SITEMAPS_DIR = RAW_DIR / "sitemaps"
 ANALYSIS_DIR = DATA_DIR / "analysis"
 TRAINING_DIR = DATA_DIR / "training"
 MODELS_DIR = REPO_ROOT / "ml_models"
+MAX_LISTINGS = 1000  # Max listings to scrape per run
 
 
 # DAG default arguments
@@ -96,7 +97,7 @@ with DAG(
             output_file_path.parent.mkdir(parents=True, exist_ok=True)
 
             scraper = ImmovlanListingScraper()
-            total_scraped = scraper.scrape_listings(urls_txt_file, output_file_path)
+            total_scraped = scraper.scrape_listings(urls_txt_file, output_file_path, max_listings=MAX_LISTINGS)
 
             logger.info(
                 f"Scraped {total_scraped} apartments, saved to {output_file_path}"
@@ -124,7 +125,7 @@ with DAG(
             output_file_path.parent.mkdir(parents=True, exist_ok=True)
 
             scraper = ImmovlanListingScraper()
-            total_scraped = scraper.scrape_listings(urls_txt_file, output_file_path)
+            total_scraped = scraper.scrape_listings(urls_txt_file, output_file_path, max_listings=MAX_LISTINGS)
 
             logger.info(f"Scraped {total_scraped} houses, saved to {output_file_path}")
             return str(output_file_path)
