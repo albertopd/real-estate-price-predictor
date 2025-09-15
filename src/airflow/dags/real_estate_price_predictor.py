@@ -28,7 +28,7 @@ SITEMAPS_DIR = RAW_DIR / "sitemaps"
 ANALYSIS_DIR = DATA_DIR / "analysis"
 TRAINING_DIR = DATA_DIR / "training"
 MODELS_DIR = REPO_ROOT / "ml_models"
-MAX_LISTINGS = 1000  # Max listings to scrape per run
+MAX_LISTINGS = 100  # Max listings to scrape per run
 
 
 # DAG default arguments

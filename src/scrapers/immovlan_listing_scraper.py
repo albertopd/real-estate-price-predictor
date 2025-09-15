@@ -1,7 +1,6 @@
 import time
 import requests
 import re
-import csv
 import random
 import pandas as pd
 import pyarrow.parquet as pq
@@ -24,10 +23,6 @@ class ImmovlanListingScraper:
     Attributes:
         data (list[dict]): A list of dictionaries containing parsed listing data.
     """
-
-    # Immovlan listings URL
-    LISTINGS_URL = "https://immovlan.be/en/real-estate?transactiontypes=for-sale&propertytypes=house,apartment&sortdirection=ascending&sortby=zipcode&towns={}&page={}"
-    URLS_PER_PAGE = 20
 
     # Listing fields
     FIELD_URL = "URL"
@@ -202,7 +197,7 @@ class ImmovlanListingScraper:
 
         # Write full dataframe back to parquet
         df.to_parquet(file_path, engine="pyarrow", index=False)
-        
+
     def _get_headers(self) -> dict:
         """
         Generate randomized, realistic HTTP headers to reduce request blocking.
