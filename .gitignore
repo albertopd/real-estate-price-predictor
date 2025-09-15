@@ -218,3 +218,6 @@ ml_models/*.joblib
 
 # Ignore all files in mlruns/ directory
 mlruns/
+
+# Ignore all log files in logs/ directory
+logs/**/

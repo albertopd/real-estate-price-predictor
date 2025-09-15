@@ -121,6 +121,7 @@ services:
     volumes:
       - ./data:/opt/project/data
       - ./ml_models:/opt/project/ml_models
+      - ./logs/airflow-scheduler:/opt/airflow/logs
     networks: 
       - real_estate_predictor
 
@@ -147,6 +148,7 @@ services:
     volumes:
       - ./data:/opt/project/data
       - ./ml_models:/opt/project/ml_models
+      - ./logs/airflow-workers:/opt/airflow/logs
     networks:
       - real_estate_predictor
 
